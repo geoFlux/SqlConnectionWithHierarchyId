@@ -2,14 +2,16 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>GeoFlux.SqlConnectionWithHierarchyId</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Jason Blake</Authors>
     <Company>geoflux</Company>
     <PackageDescription>Add SqlHierarchyId support to SqlConnection</PackageDescription>
     <license>MIT</license>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="dotMorten.Microsoft.SqlServer.Types" Version="1.1.0"/>
-    <PackageReference Include="Dapper" Version="1.50.7"/>
+    <PackageReference Include="Dapper" Version="1.50.5"/>
   </ItemGroup>
 </Project>

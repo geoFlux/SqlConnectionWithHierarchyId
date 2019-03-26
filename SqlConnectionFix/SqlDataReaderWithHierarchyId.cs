@@ -1,22 +1,25 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.SqlServer.Types;
 namespace GeoFlux.SqlConnectionFix
 {
-    public class SqlDataReaderWithHierarchyId : IDataReader
-    {
+    public class SqlDataReaderWithHierarchyId: DbDataReader{
         readonly SqlDataReader sqlReader;
         IDataReader iReader => sqlReader;
-        public SqlDataReaderWithHierarchyId(SqlDataReader innerReader)
-        {
-            Console.WriteLine("SqlDataReaderWithHierarchyId Constructor");
-            sqlReader = innerReader;
+
+
+        public SqlDataReaderWithHierarchyId(SqlDataReader inner){
+            this.sqlReader = inner;
         }
-        public object this[int idx]
+
+       public override object this[int idx]
         {
             get
             {
@@ -28,7 +31,7 @@ namespace GeoFlux.SqlConnectionFix
             }
         }
 
-        public object this[string name]
+        public override object this[string name]
         {
             get
             {
@@ -41,7 +44,7 @@ namespace GeoFlux.SqlConnectionFix
             }
         }
 
-        public object GetValue(int i)
+        public override object GetValue(int i)
         {
 
             if (IsHierarchyIdColumn(i))
@@ -73,11 +76,26 @@ namespace GeoFlux.SqlConnectionFix
             }
             return udt;
         }
+        public async Task<SqlHierarchyId> GetHierarchyIdAsync(int i){
+            var udt = new SqlHierarchyId();
+
+            using (var strm = sqlReader.GetStream(i))
+            {
+                var bytes = await GetAllBytesAsync(strm, 892);
+                using (var ms = new MemoryStream(bytes))
+                using (var bReader = new BinaryReader(ms))
+                {
+                    var len = ms.Length;
+                    udt.Read(bReader);
+                }
+            }
+            return udt;
+        }
 
         byte[] GetAllBytes(Stream strm, int estimatedMaxSize)
         {
 
-            var bufferSize = 1;
+            var bufferSize = 892;
             var buffer = new byte[estimatedMaxSize];
             var result = new List<byte>();
             int numBytesRead;
@@ -87,164 +105,195 @@ namespace GeoFlux.SqlConnectionFix
             }
             return result.ToArray();
         }
+        async Task<byte[]> GetAllBytesAsync(Stream strm, int estimatedMaxSize)
+        {
 
-        public int Depth => iReader.Depth;
+            var bufferSize = 892;
+            var buffer = new byte[estimatedMaxSize];
+            var result = new List<byte>();
+            int numBytesRead;
+            while ((numBytesRead = await strm.ReadAsync(buffer, 0, bufferSize)) > 0)
+            {
+                result.AddRange(buffer.Take(numBytesRead));
+            }
+            return result.ToArray();
+        }
 
-        public bool IsClosed => iReader.IsClosed;
+        public override int Depth => iReader.Depth;
 
-        public int RecordsAffected => iReader.RecordsAffected;
+        public override bool IsClosed => iReader.IsClosed;
 
-        public int FieldCount => iReader.FieldCount;
+        public override int RecordsAffected => iReader.RecordsAffected;
 
-        public void Close()
+        public override int FieldCount => iReader.FieldCount;
+
+        public override bool HasRows => sqlReader.HasRows;
+
+        public override void Close()
         {
             iReader.Close();
         }
 
-        public bool GetBoolean(int i)
+        public override bool GetBoolean(int i)
         {
             return iReader.GetBoolean(i);
         }
 
-        public byte GetByte(int i)
+        public override byte GetByte(int i)
         {
             return iReader.GetByte(i);
         }
 
-        public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
+        public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
         {
             return iReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
         }
 
-        public char GetChar(int i)
+        public override char GetChar(int i)
         {
             return iReader.GetChar(i);
         }
 
-        public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
+        public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
             return iReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
         }
 
-        public IDataReader GetData(int i)
-        {
-            return iReader.GetData(i);
-        }
 
-        public string GetDataTypeName(int i)
+
+        public override string GetDataTypeName(int i)
         {
             return iReader.GetDataTypeName(i);
         }
 
-        public DateTime GetDateTime(int i)
+        public override DateTime GetDateTime(int i)
         {
             return iReader.GetDateTime(i);
         }
 
-        public decimal GetDecimal(int i)
+        public override decimal GetDecimal(int i)
         {
             return iReader.GetDecimal(i);
         }
 
-        public double GetDouble(int i)
+        public override double GetDouble(int i)
         {
             return iReader.GetDouble(i);
         }
 
-        public Type GetFieldType(int i)
+        public override Type GetFieldType(int i)
         {
             return iReader.GetFieldType(i);
         }
 
-        public float GetFloat(int i)
+        public override float GetFloat(int i)
         {
             return iReader.GetFloat(i);
         }
 
-        public Guid GetGuid(int i)
+        public override Guid GetGuid(int i)
         {
             return iReader.GetGuid(i);
         }
 
-        public short GetInt16(int i)
+        public override short GetInt16(int i)
         {
             return iReader.GetInt16(i);
         }
 
-        public int GetInt32(int i)
+        public override int GetInt32(int i)
         {
             return iReader.GetInt32(i);
         }
 
-        public long GetInt64(int i)
+        public override long GetInt64(int i)
         {
             return iReader.GetInt64(i);
         }
 
-        public string GetName(int i)
+        public override string GetName(int i)
         {
             return iReader.GetName(i);
         }
 
-        public int GetOrdinal(string name)
+        public override int GetOrdinal(string name)
         {
             return iReader.GetOrdinal(name);
         }
 
-        public DataTable GetSchemaTable()
+        public override DataTable GetSchemaTable()
         {
             return iReader.GetSchemaTable();
         }
 
-        public string GetString(int i)
+        public override string GetString(int i)
         {
             return iReader.GetString(i);
         }
 
 
-        public int GetValues(object[] values)
+        public override int GetValues(object[] values)
         {
             Console.WriteLine("GetValues");
             return iReader.GetValues(values);
         }
 
-        public bool IsDBNull(int i)
+        public override bool IsDBNull(int i)
         {
             return iReader.IsDBNull(i);
         }
 
-        public bool NextResult()
+        public override bool NextResult()
         {
             return iReader.NextResult();
         }
 
-        public bool Read()
+        public override bool Read()
         {
             return iReader.Read();
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        public override IEnumerator GetEnumerator()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    iReader.Dispose();
-                }
+            return sqlReader.GetEnumerator();
+        }
 
-                disposedValue = true;
+        public  override T GetFieldValue<T>(int ordinal){
+
+            if(typeof(T) == typeof(SqlHierarchyId)){
+                return (T)(object)this.GetHierarchyId(ordinal);
             }
+            return sqlReader.GetFieldValue<T>(ordinal);
         }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
+        public override async Task<T> GetFieldValueAsync<T>(int ordinal, System.Threading.CancellationToken cancellationToken){
+            if(typeof(T) == typeof(SqlHierarchyId)){
+                return (T)(object)(await this.GetHierarchyIdAsync(ordinal));
+            }
+            return await sqlReader.GetFieldValueAsync<T>(ordinal, cancellationToken);
         }
-        #endregion
-
+        public override Type GetProviderSpecificFieldType(int ordinal){
+            return sqlReader.GetProviderSpecificFieldType(ordinal);
+        }
+        public override object GetProviderSpecificValue(int ordinal){
+            return sqlReader.GetProviderSpecificValue(ordinal);
+        }
+        public override int GetProviderSpecificValues(object[] values){
+            return sqlReader.GetProviderSpecificValues(values);
+        }
+        public override Task<bool> ReadAsync(System.Threading.CancellationToken cancellationToken){
+            return sqlReader.ReadAsync();
+        }
+        public override Stream GetStream(int ordinal){
+            return sqlReader.GetStream(ordinal);
+        }
+        public override TextReader GetTextReader(int ordinal){
+            return sqlReader.GetTextReader(ordinal);
+        }
+        public override Task<bool> IsDBNullAsync(int ordinal, System.Threading.CancellationToken cancellationToken){
+            return sqlReader.IsDBNullAsync(ordinal, cancellationToken);
+        }
+        public override Task<bool> NextResultAsync(System.Threading.CancellationToken cancellationToken){
+            return sqlReader.NextResultAsync(cancellationToken);
+        }
     }
 }

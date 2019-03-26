@@ -1,82 +1,68 @@
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
+
 namespace GeoFlux.SqlConnectionFix
 {
-    public class SqlCommandWithHierarchyId : IDbCommand
-    {
-        readonly SqlCommand c;
-        private IDbCommand i => c;
-        public SqlCommandWithHierarchyId(SqlCommand inner)
-        {
-            this.c = inner;
+    public class SqlCommandWithHierarchyId: DbCommand{
+        private readonly SqlCommand i;
+
+        DbCommand ii => i;
+
+        public SqlCommandWithHierarchyId(SqlCommand inner){
+            this.i = inner;
         }
-        public IDbConnection Connection { get => i.Connection; set => i.Connection = value; }
-        public IDbTransaction Transaction { get => i.Transaction; set => i.Transaction = value; }
-        public string CommandText { get => i.CommandText; set => i.CommandText = value; }
-        public int CommandTimeout { get => i.CommandTimeout; set => i.CommandTimeout = value; }
-        public CommandType CommandType { get => i.CommandType; set => i.CommandType = value; }
+        public override string CommandText { get => i.CommandText; set => i.CommandText = value; }
+        public override int CommandTimeout { get => i.CommandTimeout; set => i.CommandTimeout = value; }
+        public override CommandType CommandType { get => i.CommandType; set => i.CommandType = value; }
+        public override bool DesignTimeVisible { get => i.DesignTimeVisible; set => i.DesignTimeVisible = value; }
+        public override UpdateRowSource UpdatedRowSource { get => i.UpdatedRowSource; set => i.UpdatedRowSource = value; }
+        protected override DbConnection DbConnection { get => i.Connection; set => i.Connection = (SqlConnection)value; }//should maybe throw not implemented
 
-        public IDataParameterCollection Parameters => i.Parameters;
+        protected override DbParameterCollection DbParameterCollection => i.Parameters;
 
-        public UpdateRowSource UpdatedRowSource { get => i.UpdatedRowSource; set => i.UpdatedRowSource = value; }
+        protected override DbTransaction DbTransaction { get => i.Transaction; set => i.Transaction = (SqlTransaction)value; }//should maybe throw not implemented
 
-        public void Cancel()
+        public override void Cancel()
         {
             i.Cancel();
         }
 
-        public IDbDataParameter CreateParameter()
-        {
-            return i.CreateParameter();
-        }
-
-        public int ExecuteNonQuery()
+        public override int ExecuteNonQuery()
         {
             return i.ExecuteNonQuery();
         }
 
-        public IDataReader ExecuteReader()
-        {
-            return new SqlDataReaderWithHierarchyId(c.ExecuteReader());
-            //return new ErrorDataReader(new SqlDataReaderWithHierarchyId(c.ExecuteReader()));
-        }
-
-        public IDataReader ExecuteReader(CommandBehavior behavior)
-        {
-            return new SqlDataReaderWithHierarchyId(c.ExecuteReader(behavior));
-            //return new ErrorDataReader(new SqlDataReaderWithHierarchyId(c.ExecuteReader(behavior)));
-        }
-
-        public object ExecuteScalar()
+        public override object ExecuteScalar()
         {
             return i.ExecuteScalar();
         }
 
-        public void Prepare()
+        public override void Prepare()
         {
             i.Prepare();
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
+        protected override DbParameter CreateDbParameter()
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    c.Dispose();
-                }
+            return i.CreateParameter();
+        }
 
-                disposedValue = true;
-            }
+
+        public override Task<int> ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken){
+            return i.ExecuteNonQueryAsync(cancellationToken);
         }
-        public void Dispose()
+        public override Task<object> ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken){
+            return i.ExecuteScalarAsync(cancellationToken);
+        }
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, System.Threading.CancellationToken cancellationToken){
+            var inner = await i.ExecuteReaderAsync(behavior, cancellationToken);
+            return new SqlDataReaderWithHierarchyId(inner);
+        }
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
+            return new SqlDataReaderWithHierarchyId(i.ExecuteReader(behavior));
         }
-        #endregion
     }
 }

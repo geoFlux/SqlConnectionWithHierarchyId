@@ -64,5 +64,21 @@ namespace GeoFlux.SqlConnectionFix
         {
             return new SqlDataReaderWithHierarchyId(i.ExecuteReader(behavior));
         }
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    i.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+        #endregion
+
     }
 }

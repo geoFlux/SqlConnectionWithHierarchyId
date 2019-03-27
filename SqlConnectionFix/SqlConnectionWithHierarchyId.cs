@@ -1,78 +1,84 @@
+using System;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
+using System.Transactions;
 using Microsoft.SqlServer.Types;
 
 namespace GeoFlux.SqlConnectionFix
 {
-    public class SqlConnectionWithHierarchyId : IDbConnection
-    {
-        readonly SqlConnection conn;
-        public SqlConnectionWithHierarchyId(SqlConnection conn)
+    public class SqlConnectionWithHierarchyId: DbConnection{
+        private readonly SqlConnection inner;
+
+        public SqlConnectionWithHierarchyId(SqlConnection inner){
+            this.inner = inner;
+        }
+
+        public override string ConnectionString { get => inner.ConnectionString; set => inner.ConnectionString = value; }
+
+        public override string Database => inner.Database;
+
+        public override string DataSource => inner.DataSource;
+
+        public override string ServerVersion => inner.ServerVersion;
+
+        public override ConnectionState State => inner.State;
+
+        public override void ChangeDatabase(string databaseName)
         {
-            this.conn = conn;
+            inner.ChangeDatabase(databaseName);
         }
 
-        public static void AddAddDapperSupport(){
-            Dapper.SqlMapper.AddTypeHandler<SqlHierarchyId>(new SqlHierarchyIdTypeHandler());
-        }
-        public IDbTransaction BeginTransaction()
+        public override void Close()
         {
-            return conn.BeginTransaction();
+            inner.Close();
         }
 
-        public IDbTransaction BeginTransaction(IsolationLevel il)
+        public override void Open()
         {
-            return conn.BeginTransaction(il);
+            inner.Open();
         }
 
-        public void ChangeDatabase(string databaseName)
+        protected override DbTransaction BeginDbTransaction(System.Data.IsolationLevel isolationLevel)
         {
-            conn.ChangeDatabase(databaseName);
+            return inner.BeginTransaction(isolationLevel);
         }
 
-        public void Close()
+        protected override DbCommand CreateDbCommand()
         {
-            conn.Close();
+            return new SqlCommandWithHierarchyId(inner.CreateCommand());
+        }
+        public override void EnlistTransaction(Transaction transaction){
+            inner.EnlistTransaction(transaction);
+        }
+        public override DataTable GetSchema(){
+            return inner.GetSchema();
+        }
+        public override DataTable GetSchema(string collectionName){
+            return inner.GetSchema(collectionName);
+        }
+        public override DataTable GetSchema(string collectionName, string[] restrictionValues){
+            return inner.GetSchema(collectionName, restrictionValues);
+        }
+        public override Task OpenAsync(System.Threading.CancellationToken cancellationToken){
+            return inner.OpenAsync(cancellationToken);
         }
 
-        public IDbCommand CreateCommand()
-        {
-            return new SqlCommandWithHierarchyId(conn.CreateCommand());
-        }
-
-        public void Open()
-        {
-            conn.Open();
-        }
-        public string ConnectionString { get => conn.ConnectionString; set => conn.ConnectionString = value; }
-
-        public int ConnectionTimeout => conn.ConnectionTimeout;
-
-        public string Database => conn.Database;
-
-        public ConnectionState State => conn.State;
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
                 if (disposing)
                 {
-                    this.conn.Dispose();
+                    inner.Dispose();
                 }
-
                 disposedValue = true;
             }
         }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
         #endregion
 
     }

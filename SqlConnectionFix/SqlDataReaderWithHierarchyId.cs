@@ -295,5 +295,21 @@ namespace GeoFlux.SqlConnectionFix
         public override Task<bool> NextResultAsync(System.Threading.CancellationToken cancellationToken){
             return sqlReader.NextResultAsync(cancellationToken);
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    sqlReader.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+        #endregion
     }
 }
